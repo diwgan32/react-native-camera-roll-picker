@@ -6,12 +6,16 @@ import {
   Text,
   FlatList,
   ActivityIndicator,
+  Button,
+  TouchableOpacity
 } from 'react-native';
 import CameraRoll from "@react-native-community/cameraroll";
 import PropTypes from 'prop-types';
 import Row from './Row';
-
+import Icon from 'react-native-vector-icons/FontAwesome';
 import ImageItem from './ImageItem';
+
+const MAX_IMAGES = 100;
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -21,6 +25,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bottomLeft: {
+    position: "absolute",
+    bottom: 10,
+    right: 10
+  },
+  rectangle: {
+    zIndex: 100
+  },
+  buttonTitle: {
+    fontFamily: "Montserrat-Regular",
+    color: "white",
+    fontSize: 15,
   },
 });
 
@@ -49,6 +66,28 @@ const nEveryRow = (data, n) => {
   return result;
 };
 
+function SelectImages(props) {
+  return (
+    <View style={styles.bottomLeft}>
+    <TouchableOpacity
+      activeOpacity={.8}
+      style={{backgroundColor: "#ff0000", padding: 5, borderRadius: 4}}
+      onPress={props.showLimitedScreen}
+    >
+      <View style={{flexDirection:'row', alignSelf: 'stretch', justifyContent: 'space-between'}}>
+        <Text style={[styles.buttonTitle, {color: "white"}]}>Share additional videos </Text>
+        <Icon
+            name={"image"}
+            size={20}
+            color="white"
+          />
+        
+      </View>
+    </TouchableOpacity>
+      </View>
+  );
+}
+
 class CameraRollPicker extends Component {
   constructor(props) {
     super(props);
@@ -61,17 +100,43 @@ class CameraRollPicker extends Component {
       loadingMore: false,
       noMore: false,
       data: [],
+      refresh: false
     };
-
+    this.currentBatch = 0;
+    this.shouldRefresh = true;
+    this.shouldUpdate = true;
     this.renderFooterSpinner = this.renderFooterSpinner.bind(this);
     this.onEndReached = this.onEndReached.bind(this);
     this.renderRow = this.renderRow.bind(this);
     this.selectImage = this.selectImage.bind(this);
     this.renderImage = this.renderImage.bind(this);
+    this.reloadScreen = this.reloadScreen.bind(this);
+    this.concatWithKey = this.concatWithKey.bind(this);
+  }
+
+  reloadScreen() {
+    if (!this.shouldUpdate) {
+      return;
+    }
+    this.fetch();
+    if (this.shouldRefresh && this.props.isLimitedView) {
+      setTimeout(this.reloadScreen, 1000);
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.isLimitedView !== this.props.isLimitedView) {
+      this.reloadScreen();
+    }
   }
 
   componentDidMount() {
-    this.fetch();
+    this.reloadScreen();
+  }
+
+  componentWillUnmount() {
+    this.shouldRefresh = false;
+    this.shouldUpdate = false;
   }
 
   onEndReached() {
@@ -80,8 +145,30 @@ class CameraRollPicker extends Component {
     }
   }
 
+  concatWithKey(datas) {
+    if (!this.shouldUpdate) {
+      return;
+    }
+    const toAppend = [];
+    for (data of datas) {
+
+      const item = this.state.images.filter( (img) => {return img.node.image.uri === data.node.image.uri});
+      if (!item || item.length == 0) {
+        toAppend.push(data);
+      }
+    }
+    const newImages = this.state.images.concat(toAppend);
+    const dat = nEveryRow(newImages, this.props.imagesPerRow);
+    this.setState({
+      images: newImages,
+      data: dat
+    })
+  }
   appendImages(data) {
     const assets = data.edges;
+    if (!this.shouldUpdate) {
+      return;
+    }
     const newState = {
       loadingMore: false,
       initialLoading: false,
@@ -92,25 +179,43 @@ class CameraRollPicker extends Component {
     }
 
     if (assets.length > 0) {
-      newState.lastCursor = data.page_info.end_cursor;
-      newState.images = this.state.images.concat(assets);
-      newState.data = nEveryRow(newState.images, this.props.imagesPerRow);
+      this.concatWithKey(assets);
+      
     }
-
+    if (this.props.isLimitedView) {
+      if (this.state.images.length >= MAX_IMAGES) {
+        this.props.maxImagesReachedCallback(true);
+      } else {
+        this.props.maxImagesReachedCallback(false);
+      }
+    }
+    
+    if (assets.length == MAX_IMAGES) {
+      newState.lastCursor = data.page_info.end_cursor;
+      
+    }
     this.setState(newState);
   }
 
   fetch() {
     if (!this.state.loadingMore) {
-      this.setState({ loadingMore: true }, () => { this.doFetch(); });
+      if (this.props.isLimitedView) {
+        this.setState({ loadingMore: true, images: [], lastCursor: null }, () => { this.doFetch(); });
+      } else {
+        this.setState({ loadingMore: true }, () => { this.doFetch(); });
+      }
+      
     }
   }
 
   doFetch() {
+    if (!this.shouldUpdate) {
+      return;
+    }
     const { groupTypes, assetType } = this.props;
 
     const fetchParams = {
-      first: 100,
+      first: MAX_IMAGES,
       groupTypes,
       assetType,
     };
@@ -123,7 +228,6 @@ class CameraRollPicker extends Component {
     if (this.state.lastCursor) {
       fetchParams.after = this.state.lastCursor;
     }
-
     CameraRoll.getPhotos(fetchParams)
       .then(data => this.appendImages(data), e => console.log(e));
   }
@@ -223,7 +327,6 @@ class CameraRollPicker extends Component {
         </View>
       );
     }
-
     const flatListOrEmptyText = this.state.data.length > 0 ? (
       <FlatList
         style={{ flex: 1 }}
@@ -240,11 +343,16 @@ class CameraRollPicker extends Component {
     );
 
     return (
+
       <View
         style={[styles.wrapper, { padding: imageMargin, paddingRight: 0, backgroundColor }]}
       >
         {flatListOrEmptyText}
+        {(this.props.isLimitedView) && (
+        <SelectImages showLimitedScreen={this.props.showLimitedScreen}/>
+      )}
       </View>
+
     );
   }
 }
