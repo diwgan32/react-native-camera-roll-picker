@@ -17,30 +17,6 @@ import ImageItem from './ImageItem';
 
 const MAX_IMAGES = 100;
 
-const styles = StyleSheet.create({
-  wrapper: {
-    flexGrow: 1,
-  },
-  loader: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bottomLeft: {
-    position: "absolute",
-    bottom: 10,
-    right: 10
-  },
-  rectangle: {
-    zIndex: 100
-  },
-  buttonTitle: {
-    fontFamily: "Montserrat-Regular",
-    color: "white",
-    fontSize: 15,
-  },
-});
-
 // helper functions
 const arrayObjectIndexOf = (array, property, value) => array.map(o => o[property]).indexOf(value);
 
@@ -68,22 +44,22 @@ const nEveryRow = (data, n) => {
 
 function SelectImages(props) {
   return (
-    <View style={styles.bottomLeft}>
-    <TouchableOpacity
-      activeOpacity={.8}
-      style={{backgroundColor: "#ff0000", padding: 5, borderRadius: 4}}
-      onPress={props.showLimitedScreen}
-    >
-      <View style={{flexDirection:'row', alignSelf: 'stretch', justifyContent: 'space-between'}}>
-        <Text style={[styles.buttonTitle, {color: "white"}]}>Share additional videos </Text>
-        <Icon
-            name={"image"}
-            size={20}
-            color="white"
-          />
-        
-      </View>
-    </TouchableOpacity>
+      <View style={styles.bottomLeft}>
+        <TouchableOpacity
+            activeOpacity={.8}
+            style={styles.addVideosButton}
+            onPress={props.showLimitedScreen}
+        >
+          <View style={{flexDirection:'row', alignSelf: 'stretch', justifyContent: 'space-between'}}>
+            <Text style={[styles.buttonTitle, {color: "grey"}]}>Share additional videos </Text>
+            <Icon
+                name={"image"}
+                size={20}
+                color="grey"
+            />
+
+          </View>
+        </TouchableOpacity>
       </View>
   );
 }
@@ -180,7 +156,7 @@ class CameraRollPicker extends Component {
 
     if (assets.length > 0) {
       this.concatWithKey(assets);
-      
+
     }
     if (this.props.isLimitedView) {
       if (this.state.images.length >= MAX_IMAGES) {
@@ -189,10 +165,10 @@ class CameraRollPicker extends Component {
         this.props.maxImagesReachedCallback(false);
       }
     }
-    
+
     if (assets.length == MAX_IMAGES) {
       newState.lastCursor = data.page_info.end_cursor;
-      
+
     }
     this.setState(newState);
   }
@@ -204,7 +180,7 @@ class CameraRollPicker extends Component {
       } else {
         this.setState({ loadingMore: true }, () => { this.doFetch(); });
       }
-      
+
     }
   }
 
@@ -229,7 +205,7 @@ class CameraRollPicker extends Component {
       fetchParams.after = this.state.lastCursor;
     }
     CameraRoll.getPhotos(fetchParams)
-      .then(data => this.appendImages(data), e => console.log(e));
+        .then(data => this.appendImages(data), e => console.log(e));
   }
 
   selectImage(image) {
@@ -273,16 +249,16 @@ class CameraRollPicker extends Component {
     const isSelected = (arrayObjectIndexOf(selected, 'uri', uri) >= 0);
 
     return (
-      <ImageItem
-        key={uri}
-        item={item}
-        selected={isSelected}
-        imageMargin={imageMargin}
-        selectedMarker={selectedMarker}
-        imagesPerRow={imagesPerRow}
-        containerWidth={containerWidth}
-        onClick={this.selectImage}
-      />
+        <ImageItem
+            key={uri}
+            item={item}
+            selected={isSelected}
+            imageMargin={imageMargin}
+            selectedMarker={selectedMarker}
+            imagesPerRow={imagesPerRow}
+            containerWidth={containerWidth}
+            onClick={this.selectImage}
+        />
     );
   }
 
@@ -293,13 +269,13 @@ class CameraRollPicker extends Component {
       return arrayObjectIndexOf(this.state.selected, 'uri', uri) >= 0;
     });
     return (<Row
-      rowData={item}
-      isSelected={isSelected}
-      selectImage={this.selectImage}
-      imagesPerRow={this.props.imagesPerRow}
-      containerWidth={this.props.containerWidth}
-      imageMargin={this.props.imageMargin}
-      selectedMarker={this.props.selectedMarker}
+        rowData={item}
+        isSelected={isSelected}
+        selectImage={this.selectImage}
+        imagesPerRow={this.props.imagesPerRow}
+        containerWidth={this.props.containerWidth}
+        imageMargin={this.props.imageMargin}
+        selectedMarker={this.props.selectedMarker}
     />);
   }
 
@@ -322,36 +298,36 @@ class CameraRollPicker extends Component {
 
     if (this.state.initialLoading) {
       return (
-        <View style={[styles.loader, { backgroundColor }]}>
-          { loader || <ActivityIndicator /> }
-        </View>
+          <View style={[styles.loader, { backgroundColor }]}>
+            { loader || <ActivityIndicator /> }
+          </View>
       );
     }
     const flatListOrEmptyText = this.state.data.length > 0 ? (
-      <FlatList
-        style={{ flex: 1 }}
-        ListFooterComponent={this.renderFooterSpinner}
-        initialNumToRender={initialNumToRender}
-        onEndReached={this.onEndReached}
-        renderItem={({ item }) => this.renderRow(item)}
-        keyExtractor={item => item[0].node.image.uri}
-        data={this.state.data}
-        extraData={this.state.selected}
-      />
+        <FlatList
+            style={{ flex: 1 }}
+            ListFooterComponent={this.renderFooterSpinner}
+            initialNumToRender={initialNumToRender}
+            onEndReached={this.onEndReached}
+            renderItem={({ item }) => this.renderRow(item)}
+            keyExtractor={item => item[0].node.image.uri}
+            data={this.state.data}
+            extraData={this.state.selected}
+        />
     ) : (
-      <Text style={[{ textAlign: 'center' }, emptyTextStyle]}>{emptyText}</Text>
+        <Text style={[{ textAlign: 'center' }, emptyTextStyle]}>{emptyText}</Text>
     );
 
     return (
 
-      <View
-        style={[styles.wrapper, { padding: imageMargin, paddingRight: 0, backgroundColor }]}
-      >
-        {flatListOrEmptyText}
-        {(this.props.isLimitedView) && (
-        <SelectImages showLimitedScreen={this.props.showLimitedScreen}/>
-      )}
-      </View>
+        <View
+            style={[styles.wrapper, { padding: imageMargin, paddingRight: 0, backgroundColor }]}
+        >
+          {flatListOrEmptyText}
+          {(this.props.isLimitedView) && (
+              <SelectImages showLimitedScreen={this.props.showLimitedScreen}/>
+          )}
+        </View>
 
     );
   }
@@ -405,3 +381,36 @@ CameraRollPicker.defaultProps = {
 };
 
 export default CameraRollPicker;
+
+const styles = StyleSheet.create({
+  wrapper: {
+    flexGrow: 1,
+  },
+  loader: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomLeft: {
+    position: "absolute",
+    bottom: 7,
+    right: 0,
+  },
+  addVideosButton: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+    borderColor: 'grey',
+    borderWidth: 1,
+    color: 'grey',
+    // backgroundColor: 'red'
+  },
+  rectangle: {
+    zIndex: 100
+  },
+  buttonTitle: {
+    fontFamily: "Montserrat-Regular",
+    color: "white",
+    fontSize: 15,
+  },
+});
